@@ -27,12 +27,19 @@ export default function Feed() {
     }
     setUser(JSON.parse(currentUser))
     loadRequests()
+
+    const interval = setInterval(loadRequests, 2000)
+    return () => clearInterval(interval)
   }, [])
 
   const loadRequests = () => {
-    const allRequests = JSON.parse(localStorage.getItem("drawingRequests") || "[]")
-    const publicRequests = allRequests.filter((r: any) => r.visibility !== "private")
-    setRequests(publicRequests)
+    try {
+      const allRequests = JSON.parse(localStorage.getItem("drawingRequests") || "[]")
+      const publicRequests = allRequests.filter((r: any) => r.visibility !== "private")
+      setRequests(publicRequests)
+    } catch (err) {
+      console.error("Error loading requests:", err)
+    }
   }
 
   const handleSearch = (query: string) => {
