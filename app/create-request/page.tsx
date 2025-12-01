@@ -66,9 +66,17 @@ export default function CreateRequest() {
         comments: 0,
       }
 
-      const requests = JSON.parse(localStorage.getItem("drawingRequests") || "[]")
-      requests.unshift(request)
-      localStorage.setItem("drawingRequests", JSON.stringify(requests))
+      const response = await fetch("/api/requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(request),
+      })
+
+      if (!response.ok) {
+        setError("Erreur lors de la création de la demande")
+        setLoading(false)
+        return
+      }
 
       setSuccess(true)
       setDescription("")

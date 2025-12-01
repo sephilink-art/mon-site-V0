@@ -37,23 +37,44 @@ export default function AdminPanel() {
     loadData()
   }, [])
 
-  const loadData = () => {
-    const allRequests = JSON.parse(localStorage.getItem("drawingRequests") || "[]")
-    const allUsers = JSON.parse(localStorage.getItem("users") || "[]")
-    setRequests(allRequests)
-    setUsers(allUsers)
+  const loadData = async () => {
+    try {
+      const [requestsRes, usersRes] = await Promise.all([fetch("/api/requests"), fetch("/api/users")])
+      const allRequests = await requestsRes.json()
+      const allUsers = await usersRes.json()
+      setRequests(allRequests)
+      setUsers(allUsers)
+    } catch (err) {
+      setError("Erreur lors du chargement des données")
+    }
   }
 
   const handleDeleteRequest = (requestId: string) => {
     const updated = requests.filter((r) => r.id !== requestId)
-    localStorage.setItem("drawingRequests", JSON.stringify(updated))
-    setRequests(updated)
+    // Assuming API endpoint to delete request
+    fetch(`/api/requests/${requestId}`, {
+      method: "DELETE",
+    })
+      .then(() => {
+        setRequests(updated)
+      })
+      .catch((err) => {
+        setError("Erreur lors de la suppression de la demande")
+      })
   }
 
   const handleDeleteUser = (userId: string) => {
     const updated = users.filter((u) => u.id !== userId)
-    localStorage.setItem("users", JSON.stringify(updated))
-    setUsers(updated)
+    // Assuming API endpoint to delete user
+    fetch(`/api/users/${userId}`, {
+      method: "DELETE",
+    })
+      .then(() => {
+        setUsers(updated)
+      })
+      .catch((err) => {
+        setError("Erreur lors de la suppression de l'utilisateur")
+      })
   }
 
   const handleLogout = () => {
@@ -82,7 +103,7 @@ export default function AdminPanel() {
   }
 
   const loadUserConversations = (userId: string) => {
-    const allUsers = JSON.parse(localStorage.getItem("users") || "[]")
+    const allUsers = users
     const conversations = []
 
     allUsers.forEach((user: any) => {
@@ -324,7 +345,7 @@ export default function AdminPanel() {
                           </Card>
                         )}
                       {(() => {
-                        const allUsers = JSON.parse(localStorage.getItem("users") || "[]")
+                        const allUsers = users
                         const conversations = []
 
                         allUsers.forEach((user: any) => {

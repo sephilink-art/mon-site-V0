@@ -28,9 +28,9 @@ export function AuthForm({ isLogin, onAuthSuccess, onToggleMode }: AuthFormProps
     setLoading(true)
 
     try {
-      const users = JSON.parse(localStorage.getItem("users") || "[]")
-
       if (isLogin) {
+        const response = await fetch("/api/users")
+        const users = await response.json()
         const user = users.find((u: any) => u.email === email && u.password === password)
         if (!user) {
           setError("Email ou mot de passe incorrect")
@@ -45,6 +45,9 @@ export function AuthForm({ isLogin, onAuthSuccess, onToggleMode }: AuthFormProps
           setLoading(false)
           return
         }
+
+        const response = await fetch("/api/users")
+        const users = await response.json()
 
         const userExists = users.find((u: any) => u.email === email)
         const usernameExists = users.find((u: any) => u.username === username)
@@ -71,8 +74,18 @@ export function AuthForm({ isLogin, onAuthSuccess, onToggleMode }: AuthFormProps
           createdAt: new Date().toISOString(),
         }
 
-        users.push(newUser)
-        localStorage.setItem("users", JSON.stringify(users))
+        const postResponse = await fetch("/api/users", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(newUser),
+        })
+
+        if (!postResponse.ok) {
+          setError("Erreur lors de la création du compte")
+          setLoading(false)
+          return
+        }
+
         localStorage.setItem("currentUser", JSON.stringify(newUser))
         onAuthSuccess(newUser)
       }

@@ -33,11 +33,14 @@ export default function MessagesPage() {
     const parsedUser = JSON.parse(user)
     setCurrentUser(parsedUser)
 
-    const users = JSON.parse(localStorage.getItem("users") || "[]")
-    const found = users.find((u: any) => u.id === recipientId)
-    if (found) {
-      setRecipient(found)
-    }
+    fetch("/api/users")
+      .then((res) => res.json())
+      .then((users) => {
+        const found = users.find((u: any) => u.id === recipientId)
+        if (found) {
+          setRecipient(found)
+        }
+      })
 
     loadMessages()
   }, [recipientId])
@@ -61,6 +64,7 @@ export default function MessagesPage() {
       timestamp: new Date().toISOString(),
     }
 
+    // Still using localStorage for messages until we implement message API
     const allMessages = JSON.parse(localStorage.getItem(`messages_${currentUser?.id}_${recipientId}`) || "[]")
     allMessages.push(message)
     localStorage.setItem(`messages_${currentUser?.id}_${recipientId}`, JSON.stringify(allMessages))

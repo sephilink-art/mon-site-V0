@@ -32,20 +32,21 @@ export default function Feed() {
     return () => clearInterval(interval)
   }, [])
 
-  const loadRequests = () => {
+  const loadRequests = async () => {
     try {
-      const allRequests = JSON.parse(localStorage.getItem("drawingRequests") || "[]")
-      const publicRequests = allRequests.filter((r: any) => r.visibility !== "private")
+      const response = await fetch("/api/requests?visibility=public")
+      const publicRequests = await response.json()
       setRequests(publicRequests)
     } catch (err) {
       console.error("Error loading requests:", err)
     }
   }
 
-  const handleSearch = (query: string) => {
+  const handleSearch = async (query: string) => {
     setSearchQuery(query)
     if (query.trim()) {
-      const users = JSON.parse(localStorage.getItem("users") || "[]")
+      const response = await fetch("/api/users")
+      const users = await response.json()
       const results = users.filter(
         (u: any) =>
           u.email.toLowerCase().includes(query.toLowerCase()) || u.username.toLowerCase().includes(query.toLowerCase()),
