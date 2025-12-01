@@ -13,6 +13,20 @@ export default function MessagesListPage() {
   const [conversations, setConversations] = useState<any[]>([])
   const { notifications, markAsRead } = useMessages()
 
+  const loadConversations = async () => {
+    if (!currentUser) return
+
+    try {
+      const response = await fetch(`/api/conversations?userId=${currentUser.id}`)
+      if (response.ok) {
+        const data = await response.json()
+        setConversations(data)
+      }
+    } catch (error) {
+      console.error("Failed to load conversations:", error)
+    }
+  }
+
   useEffect(() => {
     const user = localStorage.getItem("currentUser")
     if (!user) {
@@ -22,18 +36,13 @@ export default function MessagesListPage() {
 
     const parsedUser = JSON.parse(user)
     setCurrentUser(parsedUser)
+  }, [])
 
-    const conversations = notifications.map((notif) => ({
-      userId: notif.userId,
-      username: notif.username,
-      avatar: notif.avatar,
-      lastMessage: notif.lastMessage,
-      timestamp: notif.timestamp,
-      unreadCount: notif.unreadCount,
-    }))
-
-    setConversations(conversations)
-  }, [notifications])
+  useEffect(() => {
+    loadConversations()
+    const interval = setInterval(loadConversations, 500)
+    return () => clearInterval(interval)
+  }, [currentUser])
 
   const handleConversationClick = (userId: string) => {
     markAsRead(userId)

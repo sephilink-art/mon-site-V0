@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -23,6 +22,16 @@ export default function MessagesPage() {
   const [loading, setLoading] = useState(false)
   const { addNotification } = useMessages()
 
+  const loadMessages = async () => {
+    try {
+      const response = await fetch(`/api/messages?userId=${currentUser.id}&otherUserId=${recipientId}`)
+      const data = await response.json()
+      setMessages(data)
+    } catch (error) {
+      console.error("Failed to load messages:", error)
+    }
+  }
+
   useEffect(() => {
     const user = localStorage.getItem("currentUser")
     if (!user) {
@@ -43,51 +52,49 @@ export default function MessagesPage() {
       })
 
     loadMessages()
+
+    const interval = setInterval(loadMessages, 500)
+    return () => clearInterval(interval)
   }, [recipientId])
 
-  const loadMessages = () => {
-    const allMessages = JSON.parse(localStorage.getItem(`messages_${currentUser?.id}_${recipientId}`) || "[]")
-    setMessages(allMessages)
-  }
-
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newMessage.trim()) return
 
     setLoading(true)
 
-    const message = {
-      id: Math.random().toString(36).substr(2, 9),
-      senderId: currentUser.id,
-      recipientId: recipientId,
-      text: newMessage,
-      timestamp: new Date().toISOString(),
-    }
-
-    // Still using localStorage for messages until we implement message API
-    const allMessages = JSON.parse(localStorage.getItem(`messages_${currentUser?.id}_${recipientId}`) || "[]")
-    allMessages.push(message)
-    localStorage.setItem(`messages_${currentUser?.id}_${recipientId}`, JSON.stringify(allMessages))
-
-    const reverseMessages = JSON.parse(localStorage.getItem(`messages_${recipientId}_${currentUser?.id}`) || "[]")
-    reverseMessages.push(message)
-    localStorage.setItem(`messages_${recipientId}_${currentUser?.id}`, JSON.stringify(reverseMessages))
-
-    if (recipientId !== currentUser.id) {
-      addNotification({
-        id: Math.random().toString(36).substr(2, 9),
-        userId: currentUser.id,
-        username: currentUser.username,
-        avatar: currentUser.avatar || "/placeholder.svg",
-        lastMessage: newMessage,
-        timestamp: message.timestamp,
-        unreadCount: 1,
+    try {
+      const response = await fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          senderId: currentUser.id,
+          recipientId: recipientId,
+          text: newMessage,
+        }),
       })
-    }
 
-    setMessages(allMessages)
-    setNewMessage("")
-    setLoading(false)
+      const message = await response.json()
+
+      if (recipientId !== currentUser.id) {
+        addNotification({
+          id: Math.random().toString(36).substr(2, 9),
+          userId: currentUser.id,
+          username: currentUser.username,
+          avatar: currentUser.avatar || "/placeholder.svg",
+          lastMessage: newMessage,
+          timestamp: message.timestamp,
+          unreadCount: 1,
+        })
+      }
+
+      setNewMessage("")
+      await loadMessages()
+    } catch (error) {
+      console.error("Failed to send message:", error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   if (!currentUser || !recipient) return null
