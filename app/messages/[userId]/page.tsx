@@ -22,11 +22,13 @@ export default function MessagesPage() {
   const [loading, setLoading] = useState(false)
   const { addNotification } = useMessages()
 
-  const loadMessages = async () => {
+  const loadMessages = async (user: any) => {
+    if (!user?.id) return
     try {
-      const response = await fetch(`/api/messages?userId=${currentUser.id}&otherUserId=${recipientId}`)
+      const response = await fetch(`/api/messages?userId=${user.id}&otherUserId=${recipientId}`)
+      if (!response.ok) throw new Error("Failed to load messages")
       const data = await response.json()
-      setMessages(data)
+      setMessages(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error("Failed to load messages:", error)
     }
@@ -51,15 +53,15 @@ export default function MessagesPage() {
         }
       })
 
-    loadMessages()
+    loadMessages(parsedUser)
 
-    const interval = setInterval(loadMessages, 500)
+    const interval = setInterval(() => loadMessages(parsedUser), 500)
     return () => clearInterval(interval)
   }, [recipientId])
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newMessage.trim()) return
+    if (!newMessage.trim() || !currentUser) return
 
     setLoading(true)
 
@@ -74,22 +76,11 @@ export default function MessagesPage() {
         }),
       })
 
+      if (!response.ok) throw new Error("Failed to send message")
+
       const message = await response.json()
-
-      if (recipientId !== currentUser.id) {
-        addNotification({
-          id: Math.random().toString(36).substr(2, 9),
-          userId: currentUser.id,
-          username: currentUser.username,
-          avatar: currentUser.avatar || "/placeholder.svg",
-          lastMessage: newMessage,
-          timestamp: message.timestamp,
-          unreadCount: 1,
-        })
-      }
-
       setNewMessage("")
-      await loadMessages()
+      await loadMessages(currentUser)
     } catch (error) {
       console.error("Failed to send message:", error)
     } finally {
