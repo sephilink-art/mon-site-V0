@@ -12,6 +12,10 @@ export const metadata: Metadata = {
   title: "Dessin - Plateforme de dessins",
   description: "Plateforme pour demander et partager des dessins",
   manifest: "/manifest.json",
+  metadataBase: new URL("https://commandededessin.sephilink.com"),
+  alternates: {
+    canonical: "https://commandededessin.sephilink.com",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
