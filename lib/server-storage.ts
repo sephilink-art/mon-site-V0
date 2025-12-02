@@ -1,7 +1,6 @@
 const allUsers: any[] = []
 const allRequests: any[] = []
 const allMessages: any[] = []
-const unreadMessages: Map<string, Set<string>> = new Map()
 
 export const serverStorage = {
   users: {
@@ -28,9 +27,11 @@ export const serverStorage = {
       return message
     },
     getConversation: (user1: string, user2: string) =>
-      allMessages.filter(
-        (m) => (m.senderId === user1 && m.recipientId === user2) || (m.senderId === user2 && m.recipientId === user1),
-      ),
+      allMessages
+        .filter(
+          (m) => (m.senderId === user1 && m.recipientId === user2) || (m.senderId === user2 && m.recipientId === user1),
+        )
+        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()),
     getMessages: (userId: string, otherUserId: string) => {
       return allMessages
         .filter(
@@ -42,45 +43,56 @@ export const serverStorage = {
     },
     addMessage: (message: any) => {
       allMessages.push(message)
-      console.log("[v0] Message stored, total messages:", allMessages.length)
       return message
     },
     getConversations: (userId: string) => {
-      const conversations = new Map()
+      const conversationMap = new Map()
 
+      // Get all messages for this user
       allMessages.forEach((msg) => {
-        const otherUserId = msg.senderId === userId ? msg.recipientId : msg.senderId
-        if (!conversations.has(otherUserId)) {
-          conversations.set(otherUserId, msg)
-        } else {
-          const existing = conversations.get(otherUserId)
-          if (new Date(msg.timestamp).getTime() > new Date(existing.timestamp).getTime()) {
-            conversations.set(otherUserId, msg)
+        const isReceived = msg.recipientId === userId
+        const isSent = msg.senderId === userId
+
+        if (isReceived || isSent) {
+          const otherUserId = msg.senderId === userId ? msg.recipientId : msg.senderId
+
+          if (!conversationMap.has(otherUserId)) {
+            conversationMap.set(otherUserId, { lastMessage: msg, messages: [] })
+          }
+
+          const conv = conversationMap.get(otherUserId)
+          conv.messages.push(msg)
+
+          // Keep the most recent message
+          if (new Date(msg.timestamp).getTime() > new Date(conv.lastMessage.timestamp).getTime()) {
+            conv.lastMessage = msg
           }
         }
       })
 
-      const storage = serverStorage
-      return Array.from(conversations.values()).map((lastMessage) => {
-        const otherUserId = lastMessage.senderId === userId ? lastMessage.recipientId : lastMessage.senderId
-        const user = storage.users.getAll().find((u: any) => u.id === otherUserId)
-        const unreadCount = allMessages.filter(
-          (m) => m.senderId === otherUserId && m.recipientId === userId && m.isUnread !== false,
+      // Convert to array and add user info
+      const conversations = Array.from(conversationMap.entries()).map(([otherUserId, data]) => {
+        const user = allUsers.find((u: any) => u.id === otherUserId)
+        const unreadCount = data.messages.filter(
+          (m: any) => m.senderId === otherUserId && m.recipientId === userId && !m.read,
         ).length
+
         return {
           userId: otherUserId,
           username: user?.username || "Unknown",
           avatar: user?.avatar || "/placeholder.svg",
-          lastMessage: lastMessage.text,
-          timestamp: lastMessage.timestamp,
+          lastMessage: data.lastMessage.text,
+          timestamp: data.lastMessage.timestamp,
           unreadCount,
         }
       })
+
+      return conversations.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
     },
     markAsRead: (userId: string, otherUserId: string) => {
       allMessages.forEach((msg) => {
         if (msg.senderId === otherUserId && msg.recipientId === userId) {
-          msg.isUnread = false
+          msg.read = true
         }
       })
     },

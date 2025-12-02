@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -10,8 +10,9 @@ import Link from "next/link"
 export default function MessagesListPage() {
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [conversations, setConversations] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const loadConversations = async (user: any) => {
+  const loadConversations = useCallback(async (user: any) => {
     if (!user?.id) return
 
     try {
@@ -21,9 +22,9 @@ export default function MessagesListPage() {
         setConversations(data)
       }
     } catch (error) {
-      console.error("Failed to load conversations:", error)
+      console.error("[v0] Failed to load conversations:", error)
     }
-  }
+  }, [])
 
   useEffect(() => {
     const user = localStorage.getItem("currentUser")
@@ -35,16 +36,16 @@ export default function MessagesListPage() {
     const parsedUser = JSON.parse(user)
     setCurrentUser(parsedUser)
     loadConversations(parsedUser)
+    setLoading(false)
 
-    const interval = setInterval(() => loadConversations(parsedUser), 300)
+    const interval = setInterval(() => loadConversations(parsedUser), 1000)
     return () => clearInterval(interval)
-  }, [])
+  }, [loadConversations])
 
-  if (!currentUser) return null
+  if (loading || !currentUser) return null
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="sticky top-0 z-50 border-b bg-card/95 backdrop-blur">
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-4">
           <Link href="/feed">
@@ -77,14 +78,14 @@ export default function MessagesListPage() {
                       <AvatarImage src={conv.avatar || "/placeholder.svg"} />
                       <AvatarFallback>{conv.username[0]}</AvatarFallback>
                     </Avatar>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <p className={`font-semibold ${conv.unreadCount > 0 ? "text-primary font-bold" : ""}`}>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className={`font-semibold truncate ${conv.unreadCount > 0 ? "text-primary" : ""}`}>
                           {conv.username}
                         </p>
                         {conv.unreadCount > 0 && (
-                          <span className="bg-primary text-primary-foreground text-xs rounded-full px-2 py-1 font-bold">
-                            {conv.unreadCount}
+                          <span className="bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 font-bold">
+                            {conv.unreadCount > 9 ? "9+" : conv.unreadCount}
                           </span>
                         )}
                       </div>

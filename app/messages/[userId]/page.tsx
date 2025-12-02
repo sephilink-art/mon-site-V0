@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -19,34 +19,54 @@ export default function MessagesPage() {
   const [messages, setMessages] = useState<any[]>([])
   const [newMessage, setNewMessage] = useState("")
   const [loading, setLoading] = useState(false)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const messageCountRef = useRef(0)
 
-  const loadMessages = async (user: any) => {
-    if (!user?.id) return
-    try {
-      const response = await fetch(`/api/messages?userId=${user.id}&otherUserId=${recipientId}`)
-      if (!response.ok) throw new Error("Failed to load messages")
-      const data = await response.json()
-      setMessages(Array.isArray(data) ? data : [])
-    } catch (error) {
-      console.error("Failed to load messages:", error)
-    }
-  }
+  const loadMessages = useCallback(
+    async (user: any) => {
+      if (!user?.id) return
+      try {
+        const response = await fetch(`/api/messages?userId=${user.id}&otherUserId=${recipientId}`)
+        if (!response.ok) throw new Error("Failed to load messages")
+        const data = await response.json()
+        const newMessages = Array.isArray(data) ? data : []
 
-  const markAsRead = async (user: any) => {
-    if (!user?.id) return
-    try {
-      await fetch("/api/conversations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: user.id,
-          otherUserId: recipientId,
-        }),
-      })
-    } catch (error) {
-      console.error("Failed to mark as read:", error)
-    }
-  }
+        // Only update if message count changed to prevent flicker
+        if (newMessages.length !== messageCountRef.current) {
+          setMessages(newMessages)
+          messageCountRef.current = newMessages.length
+          // Scroll to bottom on new messages
+          setTimeout(() => {
+            if (scrollRef.current) {
+              scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+            }
+          }, 0)
+        }
+      } catch (error) {
+        console.error("[v0] Failed to load messages:", error)
+      }
+    },
+    [recipientId],
+  )
+
+  const markAsRead = useCallback(
+    async (user: any) => {
+      if (!user?.id) return
+      try {
+        await fetch("/api/mark-read", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user.id,
+            otherUserId: recipientId,
+          }),
+        })
+      } catch (error) {
+        console.error("[v0] Failed to mark as read:", error)
+      }
+    },
+    [recipientId],
+  )
 
   useEffect(() => {
     const user = localStorage.getItem("currentUser")
@@ -66,13 +86,14 @@ export default function MessagesPage() {
           setRecipient(found)
         }
       })
+      .catch((err) => console.error("[v0] Failed to load recipient:", err))
 
     loadMessages(parsedUser)
     markAsRead(parsedUser)
 
-    const interval = setInterval(() => loadMessages(parsedUser), 300)
+    const interval = setInterval(() => loadMessages(parsedUser), 1000)
     return () => clearInterval(interval)
-  }, [recipientId])
+  }, [recipientId, loadMessages, markAsRead])
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -99,8 +120,16 @@ export default function MessagesPage() {
       const message = await response.json()
       setNewMessage("")
       setMessages((prev) => [...prev, message])
+      messageCountRef.current += 1
+
+      // Scroll to bottom
+      setTimeout(() => {
+        if (scrollRef.current) {
+          scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+        }
+      }, 0)
     } catch (error) {
-      console.error("Failed to send message:", error)
+      console.error("[v0] Failed to send message:", error)
       alert("Erreur lors de l'envoi du message")
     } finally {
       setLoading(false)
@@ -111,7 +140,6 @@ export default function MessagesPage() {
 
   return (
     <div className="flex flex-col h-screen bg-background">
-      {/* Header */}
       <header className="border-b bg-card sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-4">
           <Link href="/feed">
@@ -130,8 +158,7 @@ export default function MessagesPage() {
         </div>
       </header>
 
-      {/* Messages */}
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1" ref={scrollRef}>
         <div className="max-w-4xl mx-auto px-4 py-6 space-y-4">
           {messages.length === 0 ? (
             <div className="text-center py-12">
@@ -168,7 +195,6 @@ export default function MessagesPage() {
         </div>
       </ScrollArea>
 
-      {/* Input */}
       <div className="border-t bg-card sticky bottom-0">
         <form onSubmit={handleSendMessage} className="max-w-4xl mx-auto p-4">
           <div className="flex gap-2">
