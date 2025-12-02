@@ -66,6 +66,8 @@ export default function MessagesPage() {
     setLoading(true)
 
     try {
+      console.log("[v0] Sending message:", { senderId: currentUser.id, recipientId, text: newMessage })
+
       const response = await fetch("/api/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -76,13 +78,23 @@ export default function MessagesPage() {
         }),
       })
 
-      if (!response.ok) throw new Error("Failed to send message")
+      console.log("[v0] Response status:", response.status)
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.log("[v0] Error response:", errorData)
+        throw new Error(errorData.error || "Failed to send message")
+      }
 
       const message = await response.json()
+      console.log("[v0] Message sent successfully:", message)
+
       setNewMessage("")
-      await loadMessages(currentUser)
+
+      setMessages((prev) => [...prev, message])
     } catch (error) {
-      console.error("Failed to send message:", error)
+      console.error("[v0] Failed to send message:", error)
+      alert("Erreur lors de l'envoi du message")
     } finally {
       setLoading(false)
     }
