@@ -20,39 +20,19 @@ export default function MessagesPage() {
   const [newMessage, setNewMessage] = useState("")
   const [loading, setLoading] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
-  const messageCountRef = useRef(0)
 
-  const loadMessages = useCallback(
+  const loadAndMarkRead = useCallback(
     async (user: any) => {
-      if (!user?.id) return
+      if (!user?.id || !recipientId) return
+
       try {
+        // Load messages
         const response = await fetch(`/api/messages?userId=${user.id}&otherUserId=${recipientId}`)
         if (!response.ok) throw new Error("Failed to load messages")
         const data = await response.json()
-        const newMessages = Array.isArray(data) ? data : []
+        setMessages(Array.isArray(data) ? data : [])
 
-        // Only update if message count changed to prevent flicker
-        if (newMessages.length !== messageCountRef.current) {
-          setMessages(newMessages)
-          messageCountRef.current = newMessages.length
-          // Scroll to bottom on new messages
-          setTimeout(() => {
-            if (scrollRef.current) {
-              scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-            }
-          }, 0)
-        }
-      } catch (error) {
-        console.error("[v0] Failed to load messages:", error)
-      }
-    },
-    [recipientId],
-  )
-
-  const markAsRead = useCallback(
-    async (user: any) => {
-      if (!user?.id) return
-      try {
+        // Mark as read
         await fetch("/api/mark-read", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -61,8 +41,15 @@ export default function MessagesPage() {
             otherUserId: recipientId,
           }),
         })
+
+        // Scroll to bottom
+        setTimeout(() => {
+          if (scrollRef.current) {
+            scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+          }
+        }, 0)
       } catch (error) {
-        console.error("[v0] Failed to mark as read:", error)
+        console.error("[v0] Failed to load messages:", error)
       }
     },
     [recipientId],
@@ -78,22 +65,24 @@ export default function MessagesPage() {
     const parsedUser = JSON.parse(user)
     setCurrentUser(parsedUser)
 
+    // Load recipient info
     fetch("/api/users")
       .then((res) => res.json())
       .then((users) => {
         const found = users.find((u: any) => u.id === recipientId)
-        if (found) {
-          setRecipient(found)
-        }
+        if (found) setRecipient(found)
       })
       .catch((err) => console.error("[v0] Failed to load recipient:", err))
 
-    loadMessages(parsedUser)
-    markAsRead(parsedUser)
+    // Load messages on mount
+    loadAndMarkRead(parsedUser)
 
-    const interval = setInterval(() => loadMessages(parsedUser), 1000)
+    const interval = setInterval(() => {
+      loadAndMarkRead(parsedUser)
+    }, 2000)
+
     return () => clearInterval(interval)
-  }, [recipientId, loadMessages, markAsRead])
+  }, [recipientId, loadAndMarkRead])
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -113,16 +102,14 @@ export default function MessagesPage() {
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || "Failed to send message")
+        throw new Error("Failed to send message")
       }
 
       const message = await response.json()
       setNewMessage("")
-      setMessages((prev) => [...prev, message])
-      messageCountRef.current += 1
 
-      // Scroll to bottom
+      setMessages((prev) => [...prev, message])
+
       setTimeout(() => {
         if (scrollRef.current) {
           scrollRef.current.scrollTop = scrollRef.current.scrollHeight
