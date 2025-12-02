@@ -1,7 +1,7 @@
-// Server-side in-memory storage that persists across all users
 const allUsers: any[] = []
 const allRequests: any[] = []
 const allMessages: any[] = []
+const unreadMessages: Map<string, Set<string>> = new Map()
 
 export const serverStorage = {
   users: {
@@ -28,7 +28,9 @@ export const serverStorage = {
       return message
     },
     getConversation: (user1: string, user2: string) =>
-      allMessages.filter((m) => (m.fromId === user1 && m.toId === user2) || (m.fromId === user2 && m.toId === user1)),
+      allMessages.filter(
+        (m) => (m.senderId === user1 && m.recipientId === user2) || (m.senderId === user2 && m.recipientId === user1),
+      ),
     getMessages: (userId: string, otherUserId: string) => {
       return allMessages
         .filter(
@@ -40,6 +42,7 @@ export const serverStorage = {
     },
     addMessage: (message: any) => {
       allMessages.push(message)
+      console.log("[v0] Message stored, total messages:", allMessages.length)
       return message
     },
     getConversations: (userId: string) => {
@@ -61,13 +64,23 @@ export const serverStorage = {
       return Array.from(conversations.values()).map((lastMessage) => {
         const otherUserId = lastMessage.senderId === userId ? lastMessage.recipientId : lastMessage.senderId
         const user = storage.users.getAll().find((u: any) => u.id === otherUserId)
+        const unreadCount = allMessages.filter(
+          (m) => m.senderId === otherUserId && m.recipientId === userId && m.isUnread !== false,
+        ).length
         return {
           userId: otherUserId,
           username: user?.username || "Unknown",
           avatar: user?.avatar || "/placeholder.svg",
           lastMessage: lastMessage.text,
           timestamp: lastMessage.timestamp,
-          unreadCount: 0,
+          unreadCount,
+        }
+      })
+    },
+    markAsRead: (userId: string, otherUserId: string) => {
+      allMessages.forEach((msg) => {
+        if (msg.senderId === otherUserId && msg.recipientId === userId) {
+          msg.isUnread = false
         }
       })
     },

@@ -9,7 +9,6 @@ import { ArrowLeft, Send } from "lucide-react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { useMessages } from "@/components/message-context"
 
 export default function MessagesPage() {
   const params = useParams()
@@ -20,7 +19,6 @@ export default function MessagesPage() {
   const [messages, setMessages] = useState<any[]>([])
   const [newMessage, setNewMessage] = useState("")
   const [loading, setLoading] = useState(false)
-  const { addNotification } = useMessages()
 
   const loadMessages = async (user: any) => {
     if (!user?.id) return
@@ -31,6 +29,22 @@ export default function MessagesPage() {
       setMessages(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error("Failed to load messages:", error)
+    }
+  }
+
+  const markAsRead = async (user: any) => {
+    if (!user?.id) return
+    try {
+      await fetch("/api/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user.id,
+          otherUserId: recipientId,
+        }),
+      })
+    } catch (error) {
+      console.error("Failed to mark as read:", error)
     }
   }
 
@@ -54,8 +68,9 @@ export default function MessagesPage() {
       })
 
     loadMessages(parsedUser)
+    markAsRead(parsedUser)
 
-    const interval = setInterval(() => loadMessages(parsedUser), 500)
+    const interval = setInterval(() => loadMessages(parsedUser), 300)
     return () => clearInterval(interval)
   }, [recipientId])
 
@@ -66,8 +81,6 @@ export default function MessagesPage() {
     setLoading(true)
 
     try {
-      console.log("[v0] Sending message:", { senderId: currentUser.id, recipientId, text: newMessage })
-
       const response = await fetch("/api/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -78,22 +91,16 @@ export default function MessagesPage() {
         }),
       })
 
-      console.log("[v0] Response status:", response.status)
-
       if (!response.ok) {
         const errorData = await response.json()
-        console.log("[v0] Error response:", errorData)
         throw new Error(errorData.error || "Failed to send message")
       }
 
       const message = await response.json()
-      console.log("[v0] Message sent successfully:", message)
-
       setNewMessage("")
-
       setMessages((prev) => [...prev, message])
     } catch (error) {
-      console.error("[v0] Failed to send message:", error)
+      console.error("Failed to send message:", error)
       alert("Erreur lors de l'envoi du message")
     } finally {
       setLoading(false)

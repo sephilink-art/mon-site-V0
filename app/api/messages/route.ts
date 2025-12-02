@@ -24,10 +24,7 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { senderId, recipientId, text } = body
 
-    console.log("[v0] POST /api/messages received:", { senderId, recipientId, text })
-
     if (!senderId || !recipientId || !text) {
-      console.log("[v0] Missing fields in request")
       return Response.json({ error: "Missing fields" }, { status: 400 })
     }
 
@@ -38,12 +35,11 @@ export async function POST(request: Request) {
       recipientId,
       text,
       timestamp: new Date().toISOString(),
+      isUnread: true, // Mark new messages as unread by default
     }
 
-    console.log("[v0] Creating message:", message)
     storage.messages.addMessage(message)
-
-    console.log("[v0] Message created successfully")
+    console.log("[v0] Message created successfully, total:", storage.messages.getAll().length)
     return Response.json(message)
   } catch (error) {
     console.error("[v0] POST /api/messages error:", error)

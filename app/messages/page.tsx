@@ -6,18 +6,16 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ArrowLeft, MessageCircle } from "lucide-react"
 import Link from "next/link"
-import { useMessages } from "@/components/message-context"
 
 export default function MessagesListPage() {
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [conversations, setConversations] = useState<any[]>([])
-  const { notifications, markAsRead } = useMessages()
 
-  const loadConversations = async () => {
-    if (!currentUser) return
+  const loadConversations = async (user: any) => {
+    if (!user?.id) return
 
     try {
-      const response = await fetch(`/api/conversations?userId=${currentUser.id}`)
+      const response = await fetch(`/api/conversations?userId=${user.id}`)
       if (response.ok) {
         const data = await response.json()
         setConversations(data)
@@ -36,17 +34,11 @@ export default function MessagesListPage() {
 
     const parsedUser = JSON.parse(user)
     setCurrentUser(parsedUser)
-  }, [])
+    loadConversations(parsedUser)
 
-  useEffect(() => {
-    loadConversations()
-    const interval = setInterval(loadConversations, 500)
+    const interval = setInterval(() => loadConversations(parsedUser), 300)
     return () => clearInterval(interval)
-  }, [currentUser])
-
-  const handleConversationClick = (userId: string) => {
-    markAsRead(userId)
-  }
+  }, [])
 
   if (!currentUser) return null
 
@@ -78,11 +70,7 @@ export default function MessagesListPage() {
         ) : (
           <div className="space-y-2">
             {conversations.map((conv) => (
-              <Link
-                key={conv.userId}
-                href={`/messages/${conv.userId}`}
-                onClick={() => handleConversationClick(conv.userId)}
-              >
+              <Link key={conv.userId} href={`/messages/${conv.userId}`}>
                 <Card className="hover:bg-primary/5 transition-colors cursor-pointer">
                   <CardContent className="p-4 flex items-center gap-4">
                     <Avatar>
@@ -91,9 +79,11 @@ export default function MessagesListPage() {
                     </Avatar>
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
-                        <p className={`font-semibold ${conv.unreadCount > 0 ? "text-primary" : ""}`}>{conv.username}</p>
+                        <p className={`font-semibold ${conv.unreadCount > 0 ? "text-primary font-bold" : ""}`}>
+                          {conv.username}
+                        </p>
                         {conv.unreadCount > 0 && (
-                          <span className="bg-primary text-primary-foreground text-xs rounded-full px-2 py-1">
+                          <span className="bg-primary text-primary-foreground text-xs rounded-full px-2 py-1 font-bold">
                             {conv.unreadCount}
                           </span>
                         )}
