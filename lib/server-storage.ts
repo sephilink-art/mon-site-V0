@@ -9,6 +9,13 @@ export const serverStorage = {
       allUsers.push(user)
       return user
     },
+    updateAvatar: (userId: string, avatar: string) => {
+      const user = allUsers.find((u) => u.id === userId)
+      if (user) {
+        user.avatar = avatar
+      }
+      return user
+    },
     findByEmail: (email: string) => allUsers.find((u) => u.email === email),
   },
   requests: {
@@ -48,7 +55,6 @@ export const serverStorage = {
     getConversations: (userId: string) => {
       const conversationMap = new Map()
 
-      // Get all messages for this user
       allMessages.forEach((msg) => {
         const isReceived = msg.recipientId === userId
         const isSent = msg.senderId === userId
@@ -63,14 +69,12 @@ export const serverStorage = {
           const conv = conversationMap.get(otherUserId)
           conv.messages.push(msg)
 
-          // Keep the most recent message
           if (new Date(msg.timestamp).getTime() > new Date(conv.lastMessage.timestamp).getTime()) {
             conv.lastMessage = msg
           }
         }
       })
 
-      // Convert to array and add user info
       const conversations = Array.from(conversationMap.entries()).map(([otherUserId, data]) => {
         const user = allUsers.find((u: any) => u.id === otherUserId)
         const unreadCount = data.messages.filter(

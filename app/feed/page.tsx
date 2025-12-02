@@ -98,6 +98,14 @@ export default function Feed() {
                 <span className="hidden sm:inline">Demander</span>
               </Button>
             </Link>
+            <Link href="/profile">
+              <Button size="sm" variant="ghost" className="rounded-full">
+                <Avatar className="h-6 w-6">
+                  <AvatarImage src={user.avatar || "/placeholder.svg"} />
+                  <AvatarFallback>{user.username[0]?.toUpperCase()}</AvatarFallback>
+                </Avatar>
+              </Button>
+            </Link>
             {user.email === "colindaron19@gmail.com" && (
               <Link href="/admin">
                 <Button size="sm" variant="outline" className="rounded-full bg-transparent">
@@ -136,7 +144,7 @@ export default function Feed() {
                   <CardContent className="p-4 flex items-center gap-4">
                     <Avatar>
                       <AvatarImage src={result.avatar || "/placeholder.svg"} />
-                      <AvatarFallback>{result.username[0]}</AvatarFallback>
+                      <AvatarFallback>{result.username[0]?.toUpperCase()}</AvatarFallback>
                     </Avatar>
                     <div>
                       <p className="font-semibold">{result.username}</p>
@@ -170,7 +178,7 @@ export default function Feed() {
                   >
                     <Avatar>
                       <AvatarImage src={request.userAvatar || "/placeholder.svg"} />
-                      <AvatarFallback>{request.username[0]}</AvatarFallback>
+                      <AvatarFallback>{request.username[0]?.toUpperCase()}</AvatarFallback>
                     </Avatar>
                     <div>
                       <p className="font-semibold">{request.username}</p>
