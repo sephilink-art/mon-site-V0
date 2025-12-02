@@ -11,9 +11,10 @@ export async function GET(request: Request) {
     }
 
     const storage = getServerStorage()
-    const messages = storage.getMessages(userId, otherUserId)
+    const messages = storage.messages.getMessages(userId, otherUserId)
     return Response.json(messages)
   } catch (error) {
+    console.error("[v0] GET /api/messages error:", error)
     return Response.json({ error: "Failed to fetch messages" }, { status: 500 })
   }
 }
@@ -23,7 +24,10 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { senderId, recipientId, text } = body
 
+    console.log("[v0] POST /api/messages received:", { senderId, recipientId, text })
+
     if (!senderId || !recipientId || !text) {
+      console.log("[v0] Missing fields in request")
       return Response.json({ error: "Missing fields" }, { status: 400 })
     }
 
@@ -36,9 +40,13 @@ export async function POST(request: Request) {
       timestamp: new Date().toISOString(),
     }
 
-    storage.addMessage(message)
+    console.log("[v0] Creating message:", message)
+    storage.messages.addMessage(message)
+
+    console.log("[v0] Message created successfully")
     return Response.json(message)
   } catch (error) {
-    return Response.json({ error: "Failed to send message" }, { status: 500 })
+    console.error("[v0] POST /api/messages error:", error)
+    return Response.json({ error: "Failed to send message", details: String(error) }, { status: 500 })
   }
 }
