@@ -11,10 +11,9 @@ export async function GET(request: Request) {
     }
 
     const storage = getServerStorage()
-    const messages = storage.messages.getMessages(userId, otherUserId)
+    const messages = storage.getMessages(userId, otherUserId)
     return Response.json(messages)
   } catch (error) {
-    console.error("[v0] GET /api/messages error:", error)
     return Response.json({ error: "Failed to fetch messages" }, { status: 500 })
   }
 }
@@ -35,14 +34,11 @@ export async function POST(request: Request) {
       recipientId,
       text,
       timestamp: new Date().toISOString(),
-      isUnread: true, // Mark new messages as unread by default
     }
 
-    storage.messages.addMessage(message)
-    console.log("[v0] Message created successfully, total:", storage.messages.getAll().length)
+    storage.addMessage(message)
     return Response.json(message)
   } catch (error) {
-    console.error("[v0] POST /api/messages error:", error)
-    return Response.json({ error: "Failed to send message", details: String(error) }, { status: 500 })
+    return Response.json({ error: "Failed to send message" }, { status: 500 })
   }
 }

@@ -1,3 +1,4 @@
+// Server-side in-memory storage that persists across all users
 const allUsers: any[] = []
 const allRequests: any[] = []
 const allMessages: any[] = []
@@ -7,13 +8,6 @@ export const serverStorage = {
     getAll: () => allUsers,
     add: (user: any) => {
       allUsers.push(user)
-      return user
-    },
-    updateAvatar: (userId: string, avatar: string) => {
-      const user = allUsers.find((u) => u.id === userId)
-      if (user) {
-        user.avatar = avatar
-      }
       return user
     },
     findByEmail: (email: string) => allUsers.find((u) => u.email === email),
@@ -34,11 +28,7 @@ export const serverStorage = {
       return message
     },
     getConversation: (user1: string, user2: string) =>
-      allMessages
-        .filter(
-          (m) => (m.senderId === user1 && m.recipientId === user2) || (m.senderId === user2 && m.recipientId === user1),
-        )
-        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()),
+      allMessages.filter((m) => (m.fromId === user1 && m.toId === user2) || (m.fromId === user2 && m.toId === user1)),
     getMessages: (userId: string, otherUserId: string) => {
       return allMessages
         .filter(
@@ -53,50 +43,31 @@ export const serverStorage = {
       return message
     },
     getConversations: (userId: string) => {
-      const conversationMap = new Map()
+      const conversations = new Map()
 
       allMessages.forEach((msg) => {
-        const isReceived = msg.recipientId === userId
-        const isSent = msg.senderId === userId
-
-        if (isReceived || isSent) {
-          const otherUserId = msg.senderId === userId ? msg.recipientId : msg.senderId
-
-          if (!conversationMap.has(otherUserId)) {
-            conversationMap.set(otherUserId, { lastMessage: msg, messages: [] })
-          }
-
-          const conv = conversationMap.get(otherUserId)
-          conv.messages.push(msg)
-
-          if (new Date(msg.timestamp).getTime() > new Date(conv.lastMessage.timestamp).getTime()) {
-            conv.lastMessage = msg
+        const otherUserId = msg.senderId === userId ? msg.recipientId : msg.senderId
+        if (!conversations.has(otherUserId)) {
+          conversations.set(otherUserId, msg)
+        } else {
+          const existing = conversations.get(otherUserId)
+          if (new Date(msg.timestamp).getTime() > new Date(existing.timestamp).getTime()) {
+            conversations.set(otherUserId, msg)
           }
         }
       })
 
-      const conversations = Array.from(conversationMap.entries()).map(([otherUserId, data]) => {
-        const user = allUsers.find((u: any) => u.id === otherUserId)
-        const unreadCount = data.messages.filter(
-          (m: any) => m.senderId === otherUserId && m.recipientId === userId && !m.read,
-        ).length
-
+      const storage = serverStorage
+      return Array.from(conversations.values()).map((lastMessage) => {
+        const otherUserId = lastMessage.senderId === userId ? lastMessage.recipientId : lastMessage.senderId
+        const user = storage.users.getAll().find((u: any) => u.id === otherUserId)
         return {
           userId: otherUserId,
           username: user?.username || "Unknown",
           avatar: user?.avatar || "/placeholder.svg",
-          lastMessage: data.lastMessage.text,
-          timestamp: data.lastMessage.timestamp,
-          unreadCount,
-        }
-      })
-
-      return conversations.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-    },
-    markAsRead: (userId: string, otherUserId: string) => {
-      allMessages.forEach((msg) => {
-        if (msg.senderId === otherUserId && msg.recipientId === userId) {
-          msg.read = true
+          lastMessage: lastMessage.text,
+          timestamp: lastMessage.timestamp,
+          unreadCount: 0,
         }
       })
     },

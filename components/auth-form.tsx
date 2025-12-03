@@ -1,6 +1,7 @@
 "use client"
 
 import type React from "react"
+
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -68,7 +69,7 @@ export function AuthForm({ isLogin, onAuthSuccess, onToggleMode }: AuthFormProps
           email,
           password,
           username: username.trim(),
-          avatar: `/placeholder.svg?height=200&width=200&query=profile+avatar+for+${username}`,
+          avatar: `/placeholder.svg?height=48&width=48&query=avatar`,
           bio: "",
           createdAt: new Date().toISOString(),
         }
@@ -96,14 +97,12 @@ export function AuthForm({ isLogin, onAuthSuccess, onToggleMode }: AuthFormProps
   }
 
   return (
-    <Card className="w-full max-w-md shadow-xl">
-      <CardHeader className="text-center bg-gradient-to-br from-primary/10 to-secondary/10">
-        <CardTitle className="text-3xl bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
-          Dessin
-        </CardTitle>
+    <Card className="w-full max-w-md">
+      <CardHeader className="text-center">
+        <CardTitle className="text-3xl">Dessin</CardTitle>
         <CardDescription>{isLogin ? "Connectez-vous à votre compte" : "Créez un nouveau compte"}</CardDescription>
       </CardHeader>
-      <CardContent className="pt-6">
+      <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
             <Alert variant="destructive">
@@ -156,7 +155,7 @@ export function AuthForm({ isLogin, onAuthSuccess, onToggleMode }: AuthFormProps
             />
           </div>
 
-          <Button type="submit" className="w-full btn-gradient-primary" disabled={loading}>
+          <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Chargement..." : isLogin ? "Se connecter" : "S'inscrire"}
           </Button>
 

@@ -1,30 +1,31 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ArrowLeft, MessageCircle } from "lucide-react"
 import Link from "next/link"
+import { useMessages } from "@/components/message-context"
 
 export default function MessagesListPage() {
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [conversations, setConversations] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const { notifications, markAsRead } = useMessages()
 
-  const loadConversations = useCallback(async (user: any) => {
-    if (!user?.id) return
+  const loadConversations = async () => {
+    if (!currentUser) return
 
     try {
-      const response = await fetch(`/api/conversations?userId=${user.id}`)
+      const response = await fetch(`/api/conversations?userId=${currentUser.id}`)
       if (response.ok) {
         const data = await response.json()
         setConversations(data)
       }
     } catch (error) {
-      console.error("[v0] Failed to load conversations:", error)
+      console.error("Failed to load conversations:", error)
     }
-  }, [])
+  }
 
   useEffect(() => {
     const user = localStorage.getItem("currentUser")
@@ -35,17 +36,23 @@ export default function MessagesListPage() {
 
     const parsedUser = JSON.parse(user)
     setCurrentUser(parsedUser)
-    loadConversations(parsedUser)
-    setLoading(false)
+  }, [])
 
-    const interval = setInterval(() => loadConversations(parsedUser), 1000)
+  useEffect(() => {
+    loadConversations()
+    const interval = setInterval(loadConversations, 500)
     return () => clearInterval(interval)
-  }, [loadConversations])
+  }, [currentUser])
 
-  if (loading || !currentUser) return null
+  const handleConversationClick = (userId: string) => {
+    markAsRead(userId)
+  }
+
+  if (!currentUser) return null
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Header */}
       <header className="sticky top-0 z-50 border-b bg-card/95 backdrop-blur">
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-4">
           <Link href="/feed">
@@ -71,21 +78,23 @@ export default function MessagesListPage() {
         ) : (
           <div className="space-y-2">
             {conversations.map((conv) => (
-              <Link key={conv.userId} href={`/messages/${conv.userId}`}>
+              <Link
+                key={conv.userId}
+                href={`/messages/${conv.userId}`}
+                onClick={() => handleConversationClick(conv.userId)}
+              >
                 <Card className="hover:bg-primary/5 transition-colors cursor-pointer">
                   <CardContent className="p-4 flex items-center gap-4">
                     <Avatar>
                       <AvatarImage src={conv.avatar || "/placeholder.svg"} />
                       <AvatarFallback>{conv.username[0]}</AvatarFallback>
                     </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className={`font-semibold truncate ${conv.unreadCount > 0 ? "text-primary" : ""}`}>
-                          {conv.username}
-                        </p>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <p className={`font-semibold ${conv.unreadCount > 0 ? "text-primary" : ""}`}>{conv.username}</p>
                         {conv.unreadCount > 0 && (
-                          <span className="bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 font-bold">
-                            {conv.unreadCount > 9 ? "9+" : conv.unreadCount}
+                          <span className="bg-primary text-primary-foreground text-xs rounded-full px-2 py-1">
+                            {conv.unreadCount}
                           </span>
                         )}
                       </div>
